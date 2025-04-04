@@ -1,0 +1,539 @@
+
+1. —-Smerovanie-Prepinanie
+
+R2>en
+R2#conf t
+R2(config)#int g0/1
+
+R2(config-if)#ip add 192.168.1.1 255.255.255.192
+R2(config-if)#exit
+R2(config)#int g0/1
+R2(config-if)#ip add 10.0.0.2 255.255.255.252
+R2(config-if)#exit
+
+R1>en
+R1#conf t
+R1(config)#int g0/0
+R1(config-if)#ip add 192.168.1.65 255.255.255.192
+R1(config-if)#exit
+R1(config)#int g0/1
+R1(config-if)#ip add 10.0.0.1 255.255.255.252
+R1(config-if)#exit
+
+R1#conf t
+R1(config)#enable password cisco
+R1(config)#line console 0
+R1(config-line)#password cisco
+R1(config-line)#login
+R1(config-line)#end
+
+R1#conf t
+Enter configuration commands, one per line.  End with CNTL/Z.
+R1(config)#line vty 0 4
+R1(config-line)#password cisco
+R1(config-line)#login
+R1(config-line)#end
+R1(config)#banner motd "ROUTER SPS BARDEJOV  CHRANENA ZONA"
+R1#copy running-config startup-config
+R1#copy running-config tftp
+
+—-Dynamicky nat
+
+GW_NAT>en
+GW_NAT#conf t
+GW_NAT(config)#access-list 1 permit 192.168.10.0 0.0.0.255
+GW_NAT(config)#access-list 1 deny any
+GW_NAT(config)#exit
+
+GW_NAT(config)#ip nat pool Bazen 209.165.200.240 209.165.200.247 netmask 255.255.255.240
+
+GW_NAT(config)#int s0/1/0
+GW_NAT(config-if)#ip nat outside
+GW_NAT(config-if)#exit
+GW_NAT(config)#int g0/0
+GW_NAT(config-if)#ip nat inside
+GW_NAT(config-if)#exit
+
+GW_NAT(config)#ip nat inside source list 1 pool Bazen
+GW_NAT(config)#end
+GW_NAT#show ip nat translations
+
+—-Staticky nat
+
+S_NAT(config)#int g0/0
+S_NAT(config-if)#ip nat inside
+S_NAT(config-if)#ex
+S_NAT(config)#int s0/1/0
+S_NAT(config-if)#ip nat outside
+S_NAT(config-if)#exit
+S_NAT(config)#ip nat inside source static 192.168.10.1 209.165.200.5
+S_NAT#show ip nat translations 
+
+—-SSH
+
+smerovac>en
+smerovac#conf 
+smerovac(config)#hostname krstne_meno
+smerovac(config)#enable password cisco
+Nikolas(config)# username krstne_meno privilege 5 password priezvisko
+Nikolas(config)#ip domain-name spsbj.sk
+Nikolas(config)#crypto key generate rsa 
+
+How many bits in the modulus [512]: 1024
+% Generating 1024 bit RSA keys, keys will be non-exportable...[OK]
+
+Nikolas(config)#line vty 0 4
+Nikolas(config-line)#transport input ssh
+Nikolas(config-line)#login local
+Nikolas(config-line)#end
+Nikolas#
+
+PC
+ssh -l username ipadressrootra 
+
+—-Port security
+
+Switch#en
+Switch#conft
+Switch(config)#int range fa0/1-10
+Switch(config-if-range)#switchport mode access 
+Switch(config-if-range)#switchport port-security
+Switch(config-if-range)#switch port-security maximum 2
+Switch(config-if-range)#switch port-security mac-address sticky
+Switch(config-if-range)#switch port-security violation shutdown
+Switch(config)#interface range fastEthernet 0/11-24
+Switch(config-if-range)#sh
+Switch(config)#interface range gigabitEthernet 0/1-2
+Switch(config-if-range)#sh
+Switch#show port-security
+
+—-VLAN
+
+KE_SWITCH>en
+KE_SWITCH#conf t
+KE_SWITCH(config)#vlan 10
+KE_SWITCH(config-vlan)#name STUDENT
+KE_SWITCH(config-vlan)#EXIT
+
+KE_SWITCH(config)#vlan 20
+KE_SWITCH(config-vlan)#name UCITEL
+KE_SWITCH(config-vlan)#EXIT
+
+KE_SWITCH(config)#vlan 99
+KE_SWITCH(config-vlan)#name NATIVNA
+KE_SWITCH(config-vlan)#exit
+
+KE_SWITCH(config)#interface range fa0/1-6
+KE_SWITCH(config-if-range)#switchport mode access 
+KE_SWITCH(config-if-range)#switchport access vlan 10
+KE_SWITCH(config-if-range)#exit
+
+KE_SWITCH(config)#interface range fa0/7-12
+KE_SWITCH(config-if-range)#switchport mode access 
+KE_SWITCH(config-if-range)#switchport access vlan 20
+KE_SWITCH(config-if-range)#exit
+
+KE_SWITCH(config)#interface range fa0/13-23
+KE_SWITCH(config-if-range)#switchport mode access 
+KE_SWITCH(config-if-range)#switchport access vlan 99
+KE_SWITCH(config-if-range)#exit
+
+KE_SWITCH(config)#interface fa0/24
+KE_SWITCH(config-if)#switchport mode trunk 
+KE_SWITCH(config-if)#switchport trunk native vlan 99
+KE_SWITCH(config-if)#switchport trunk allowed vlan 10,20,99
+KE_SWITCH(config-if)#exit
+KE_SWITCH#show vlan
+KE_SWITCH#show vlan brief
+
+—-VLAN SMEROVANIE
+
+ROUTER ON STICK 
+
+GlobNet>en
+GlobNet#conf t
+GlobNet(config)#int g0/1.10
+GlobNet(config-subif)#encapsulation dot1q 10
+GlobNet(config-subif)#ip add 192.168.10.1 255.255.255.0
+GlobNet(config-subif)#exit
+GlobNet(config)#int g0/1.20
+GlobNet(config-subif)#encapsulation dot1q 20
+GlobNet(config-subif)#ip add 192.168.20.1 255.255.255.0
+GlobNet(config-subif)#exit
+
+C:\>ping 192.168.20.20
+C:\>ping 192.168.20.1
+C:\>ping 192.168.10.1
+
+—-HSRP
+
+Manazment 
+Router>en
+Router#conf t
+Router(config)#int g0/1
+Router(config-if)#standby 1 ip 192.168.100.1
+Router(config-if)#standby 1 preempt
+Router(config-if)#standby 1 priority 150
+Router(config-if)#end
+
+Router#show standby
+
+IT
+
+Router>en
+Router#conf t
+Router(config)#int g0/1
+Router(config-if)#standby 1 ip 192.168.100.1
+Router(config-if)#standby 1 preempt
+Router(config-if)#end
+
+Router#show standby
+
+—-ACCESS LIST
+
+na rootri TAES_MANAZMENT 
+TAES_manazment(config)#access-list 1 permit host 10.0.2.3
+TAES_manazment(config)#access-list 1 deny 10.0.2.0 0.0.0.255
+TAES_manazment(config)#int s0/1/0
+TAES_manazment(config-if)#ip access-group 1 in
+
+
+ekonom_PC : ping 10.0.0.2 - funguje
+ostatné pc - ping nefunguje
+
+IPV6 dhcp statefull 11.uloha
+
+
+ELEKTRO_BJ>en
+ELEKTRO_BJ#conf t
+ELEKTRO_BJ(config)#ipv6 dhcp pool elektro
+ELEKTRO_BJ(config-dhcpv6)#address prefix 2001:db8:acad::/64
+ELEKTRO_BJ(config-dhcpv6)#domain-name elektro.sk
+ELEKTRO_BJ(config-dhcpv6)#dns-server 2001:db8:acad::1
+ELEKTRO_BJ(config-dhcpv6)#exit
+ELEKTRO_BJ(config)#int g0/0
+ELEKTRO_BJ(config-if)#ipv6 nd managed-config-flag
+ELEKTRO_BJ(config-if)#ipv6 dhcp server elektro
+ELEKTRO_BJ(config-if)#exit
+
+poziadame pocitace o dhcp adresu automatic a dhcp
+
+12. domov gui
+
+zmenime adresau na:
+192.168.10.1
+
+DHCP server enable
+Start ip adress 192.168.1.11
+
+
+
+prepneme sa na wireless 
+
+zmenim meno na Domov_wifi
+
+vo wireless sa prepneme na wireless security 
+nastavime to na WPA2 personal a zmenime passphase na Dom0v123 
+
+
+
+
+meno heslo 13. uloha
+
+>en
+#conf t
+#(config)hostname R0
+#(config)enable password heslo1
+#(config)enable secret sifra1
+#(config)line console 0
+#(config-line)password heslo2
+#(config-line)exit
+#(config)banner motd "neopravneny vstup"
+#exit
+#copy running-config startup config
+len enter(nedavat meno suboru)
+
+
+access list-telnet 14. uloha
+
+R2>en
+Password: cisco
+R2#conf t
+R2(config)# access-list 1 permit host 192.168.4.20
+R2(config)# access-list 1 permit host 192.168.3.20
+R2(config)# access-list 1 deny any
+R2(config)# exit
+R2#conf t
+R2(config)#line vty 0 4
+R2(config-line)#access-class 1 in
+R2(config-line)# exit
+
+RIADITEL PC
+ping na telnet 192.168.5.1
+password: skola
+
+ADMIN PC
+ping na- telnet 192.168.5.1
+password: skola
+
+random iny pc 
+ping na- telnet 192.168.5.1
+zakazane.
+
+
+STP 15. uloha
+
+
+xame 1
+Switch>en
+Switch#show spanning-tree
+Switch#conf t
+Switch(config)#spanning-tree vlan 1 root primary
+2.sposob
+Switch(config)#spanning-tree vlan 1 priority 0 (nastavenie najnizsej priority pre root-bridge)
+Switch(config)#exit
+xame3
+Switch>en
+Switch#conf t
+Switch(config)#int fa0/4
+Switch(config-if)#spanning-tree vlan 1 cost 1
+Switch(config)#exit
+
+ospf    16.uloha
+
+R1>
+R1#conf t
+R1(config)#int fa0/0
+R1(config-if)#ip ospf 1 area 0
+R1(config-if)#exit
+R1(config)#int se0/1/0
+R1(config-if)#ip ospf 1 area 0
+R1(config-if)#exit
+
+R2>
+R2#conf t
+R2(config)#int se0/1/1
+R2(config-if)#ip ospf 1 area 0
+R2(config-if)#exit
+R2(config)#int se0/1/0
+R2(config-if)#ip ospf 1 area 0
+R2(config-if)#exit
+R2(config)#int fa0/0
+R2(config-if)#ip ospf 1 area 0
+R2(config-if)#exit
+
+R3>
+R3#conf t
+R3(config)#int se0/1/0
+R3(config-if)#ip ospf 1 area 0
+R3(config-if)#exit
+R3(config)#int fa0/0
+R3(config-if)#ip ospf 1 area 0
+R3(config-if)#exit
+R3(config)#router ospf 1 
+R3(config-router)#default-information originate
+R3(config-router)#exit
+
+17. uloha
+
+teoreticka iso osi
+ISO/OSI model (Open Systems Interconnection model) je referenčný model, ktorý popisuje, ako rôzne vrstvy komunikujú medzi sebou v počítačových sieťach. 
+Model má sedem vrstiev, ktoré sú zoradené od najnižšej (fyzičnej) po najvyššiu (aplikačnú).
+Fyzická vrstva (Physical Layer) – Zodpovedá za prenos bitov po fyzickom médiu (káble, signály, atď.).
+Dátová linka (Data Link Layer) – Zabezpečuje spoľahlivý prenos dát cez fyzické médium a riadi prístup k médiu (MAC adresy, rámce).
+Sieťová vrstva (Network Layer) – Zodpovedá za smerovanie dát cez sieť (IP adresy, routing).
+Transportná vrstva (Transport Layer) – Zaisťuje spoľahlivý prenos dát medzi koncovými bodmi (TCP, UDP).
+Relačná vrstva (Session Layer) – Riadi komunikáciu medzi aplikáciami a spravuje spojenie (súčasť správy relácií).
+Prezentácia (Presentation Layer) – Zodpovedá za formátovanie, šifrovanie a kompresiu dát (napr. kódovanie textu).
+Aplikačná vrstva (Application Layer) – Poskytuje sieťové služby pre aplikácie (HTTP, FTP, SMTP, atď.).
+Tento model slúži ako rámec pre pochopenie a navrhovanie sieťových protokolov a systémov.
+vymenuj protokoly sietovej vrstvy:
+Sieťová vrstva (Network Layer) ISO/OSI modelu sa zameriava na smerovanie a doručovanie dátových paketov medzi zariadeniami v rôznych sieťach. Medzi hlavné protokoly, ktoré fungujú na tejto vrstve, patrí:
+
+1. **Internet Protocol (IP)** – Základný protokol na smerovanie paketov medzi zariadeniami v rôznych sieťach. Má dve verzie:
+   - **IPv4 (Internet Protocol version 4)** – Predstavuje štandardné verzovanie IP protokolu s 32-bitovými adresami.
+   - **IPv6 (Internet Protocol version 6)** – Novšia verzia IP s 128-bitovými adresami, ktorá rieši problémy spojené s nedostatkom adries v IPv4.
+   
+2. **Routing Information Protocol (RIP)** – Protokol na dynamické smerovanie, ktorý používa metódu "hop count" na určenie najlepšej cesty.
+
+3. **Open Shortest Path First (OSPF)** – Protokol na dynamické smerovanie, ktorý používa algoritmus na hľadanie najkratšej cesty v rámci veľkých sietí.
+
+4. **Border Gateway Protocol (BGP)** – Protokol na smerovanie medzi rôznymi autonómnymi systémami (AS), často používaný v internetových backbone sieťach.
+
+5. **Internet Control Message Protocol (ICMP)** – Protokol, ktorý slúži na odosielanie chybových správ a správ o stave siete (napr. "ping").
+
+6. **Address Resolution Protocol (ARP)** – Používa sa na mapovanie IP adries na fyzické MAC adresy v rámci miestnej siete.
+
+7. **Reverse Address Resolution Protocol (RARP)** – Protokol, ktorý sa používa na získanie IP adresy zo známej MAC adresy (menej používaný v porovnaní s DHCP).
+
+Tieto protokoly sú základom pre smerovanie, adresovanie a kontrolu chýb v rámci počítačových sietí.
+
+
+IPV6 dhcp stateless 18.uloha
+
+
+SKOLA>en
+SKOLA#conf t
+SKOLA(config)#ipv6 dhcp pool skola 
+SKOLA(config-dhcpv6)#domain-name spsbj.sk
+SKOLA(config-dhcpv6)#dns-server 2001:db8:acad::1
+SKOLA(config-dhcpv6)#exit
+SKOLA(config)#int g0/0
+SKOLA(config-if)#ipv6 nd other-config-flag
+SKOLA(config-if)#ipv6 dhcp server skola
+SKOLA(config-if)#exit
+
+poziadame pocitac a notebook o dhcp adresu automatic a dhcp 
+
+
+
+19. uloha vlastna topologia ip na switch
+
+
+adresy podla tabulky 
+
+Switch>en
+Switch#conf t
+Switch(config)# interface vlan 1
+Switch(config-if)# ip add 192.168.1.1 255.255.255.0
+Switch(config-if)# no sh
+
+20. uloha subnetting
+
+128 64 32 16 8 4 2
+LAN(A) 110+2 = 112 magic number 128 maska 255.255.255.128
+rozsah siete 192.168.128.0-192.168.128.127 
+LAN(B) 33+2 = 35 magic number 64 maska 255.255.255.192
+rozsah siete 192.168.128.128-192.168-128.191
+LAN(C) 25+2 = 27 magic number 32 maska 255.255.255.224
+rozsah siete 192.168.128.192-192.168.128.223
+LAN(D) 15+2 = 17 magic number 32 maska 255.255.255.224
+rozsah siete 192.168.128.224-192.168.128.255
+
+Úloha 21
+
+ROUTER ISP
+ISP>en
+ISP#conf t
+ISP(config)#ip route 192.168.1.0 255.255.255.192 10.0.0.10
+ISP(config)#ip route 192.168.1.64 255.255.255.192 10.0.0.5
+ISP(config)#ip route 10.0.0.0 255.255.255.252 10.0.0.5
+ISP(config)#exit
+
+ISP#show ip route
+
+ROUTER R2
+R2>en
+R2#conf t
+R2(config)#ip route 192.168.1.64 255.255.255.192 10.0.0.1
+R2(config)#ip route 10.0.0.4 255.255.255.252 10.0.0.1
+R2(config)#ip route 209.165.201.0 255.255.255.224 10.0.0.9
+R2(config)#exit
+
+R2#show ip route
+
+ROUTER R1
+R1>en
+R1#conf t
+R1(config)#ip route 209.165.201.0 255.255.255.224 10.0.0.6
+R1(config)#ip route 10.0.0.8 255.255.255.252 10.0.0.6
+R1(config)#ip route 192.168.1.0 255.255.255.192 10.0.0.2
+R1(config)#exit
+
+R1#show ip route
+
+Potom skontrolovať pingy PC.
+
+R1>en
+R1#conf t
+R1(config)#ip route 0.0.0.0 0.0.0.0 10.0.0.6 - nuly znamenajú všetko čo príde 
+
+R2>en
+R2#conf t
+R2(config)#ip route 0.0.0.0 0.0.0.0 10.0.0.9 - nuly znamenajú všetko čo príde 
+
+
+Úloha 22.DHCP
+
+Pre LAN1
+R1>en
+R1#conf t
+R1(config)# ip dhcp excluded-address 192.168.10.1 192.168.10.9
+R1(config)# ip dhcp pool LAN1
+R1(config)#network 192.168.10.0 255.255.255.0
+R1(config)# default-router 192.168.10.1
+R1(config)#exit
+
+Požiadať na PC o adresu(ipv4)
+
+Pre LAN2
+R1>en
+R1#conf t
+R1(config)# ip dhcp excluded-address 192.168.20.1 192.168.20.9
+R1(config)# ip dhcp pool LAN2
+R1(config)#network 192.168.20.0 255.255.255.0
+R1(config)# default-router 192.168.20.1
+R1(config)#exit
+
+Požiadať na PC o adresu(ipv4)
+
+Priradenie adresy dhcp a zapnutie portu
+R1(config)#int g0/2
+R1(config-if)#ip address dhcp
+R1(config-if)#no sh
+
+Urobiť pingy z PC na server.
+Ak nefunguje hneď na server urobíme ping najprv na ISP a potom na server.
+
+
+ 
+uloha 23. etherchannel -lacp - 
+
+SW0
+Switch>en
+Switch#conf t
+Switch(config)#int-range f0/3-5
+Switch(config-if-range)#channel-group 1 mode active 
+Switch(config-if-range)#exit
+Switch(config)#int port-channel 1
+Switch(config-if)#switchport mode trunk
+Switch(config-if)#switchport trunk allowed vlan 1,10
+SW1 
+Switch>en
+Switch#conf t
+Switch(config)#int range f0/20-21
+Switch(config-if-range)#channel-group 1 mode active
+Switch(config-if-range)#exit
+Switch(config)#int port-channel 1
+Switch(config-if)#switchport mode trunk
+Switch(config-if)#switchport trunk allowed vlan 1,10
+Switch(config-if)#exit
+Switch(config)#
+Switch#show interfaces trunk
+Switch#show etherchannel summary
+
+uloha 24 etherchannel - pagp 
+SW1
+Switch>en
+Switch#conf t
+Switch(config)#int range f0/20-21
+Switch(config-if-range)#channel-group 2 mode desirable 
+Switch(config-if-range)#exit
+Switch(config)#int port-channel 2
+Switch(config-if)#switchport mode trunk
+Switch(config-if)#switchport trunk allowed vlan 1,20
+Switch(config-if)#exit
+
+SW2 
+Switch>en
+Switch#conf t
+Switch(config)#int range f0/20-21
+Switch(config-if-range)#channel-group 2 mode desirable 
+Switch(config-if-range)#exit
+Switch(config)#int port-channel 2
+Switch(config-if)#switchport mode trunk
+Switch(config-if)#switchport trunk allowed vlan 1,20
+Switch(config-if)#exit
+Switch(config)#
+Switch#show interfaces trunk
+Switch#show etherchannel summary
