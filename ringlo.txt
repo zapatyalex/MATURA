@@ -329,3 +329,56 @@ R1(dhcp-config)#exit
 R1(config)#int g0/2
 R1(config-if)#ip add dhcp
 R1(config-if)#no sh
+
+
+
+23. etherchannel -lacp - 
+
+SW0
+Switch>en
+Switch#conf t
+Switch(config)#int-range f0/3-5
+Switch(config-if-range)#channel-group 1 mode active 
+Switch(config-if-range)#exit
+Switch(config)#int port-channel 1
+Switch(config-if)#switchport mode trunk
+Switch(config-if)#switchport trunk allowed vlan 1,10
+SW1 
+Switch>en
+Switch#conf t
+Switch(config)#int range f0/20-21
+Switch(config-if-range)#channel-group 1 mode active
+Switch(config-if-range)#exit
+Switch(config)#int port-channel 1
+Switch(config-if)#switchport mode trunk
+Switch(config-if)#switchport trunk allowed vlan 1,10
+Switch(config-if)#exit
+Switch(config)#
+Switch#show interfaces trunk
+Switch#show etherchannel summary
+
+24 etherchannel - pagp 
+SW1
+Switch>en
+Switch#conf t
+Switch(config)#int range f0/20-21
+Switch(config-if-range)#channel-group 2 mode desirable 
+Switch(config-if-range)#exit
+Switch(config)#int port-channel 2
+Switch(config-if)#switchport mode trunk
+Switch(config-if)#switchport trunk allowed vlan 1,20
+Switch(config-if)#exit
+
+SW2 
+Switch>en
+Switch#conf t
+Switch(config)#int range f0/20-21
+Switch(config-if-range)#channel-group 2 mode desirable 
+Switch(config-if-range)#exit
+Switch(config)#int port-channel 2
+Switch(config-if)#switchport mode trunk
+Switch(config-if)#switchport trunk allowed vlan 1,20
+Switch(config-if)#exit
+Switch(config)#
+Switch#show interfaces trunk
+Switch#show etherchannel summary
